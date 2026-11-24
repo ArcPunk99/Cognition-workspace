@@ -11,8 +11,8 @@
 		{"id":"done","type":"text","text":"项目收尾","x":0,"y":1840,"width":370,"height":90},
 		{"id":"notes","type":"text","text":"- **Milestone** 可以保留阶段性想法、已确认的判断、待解问题或执行成果。保留来源，后续可以回到原始对话核对。\n- **Task** 围绕明确的目标和完成条件推进。执行中遇到超出范围的问题，先记录，由人决定是否另行推进。\n- **在 MVP 原型中**，DSH 承载会话、摘录与出处查看。人工确认的摘录写回当前任务页，在 Obsidian 可读。经人确认的正式交付进入产物层，由任务页链接过去。\n\n来源：[构建个人工作台框架](chatgpt-conversation://6b0163f0-51b0-83e8-aba1-a5dd397ca664)","x":1340,"y":-80,"width":450,"height":360},
 		{"id":"title","type":"text","text":"## 个人工作台 MVP 整体流程图\n\n[[MVP 设计]] · [[个人工作台 MVP 设计原型]]","x":-460,"y":-120,"width":370,"height":120},
-		{"id":"project","type":"text","text":"人确定 Project 的目标与衡量方式","x":-460,"y":140,"width":370,"height":90,"color":"5"},
-		{"id":"explore","type":"text","text":"在 Session 中导入材料，与 AI 探索","x":-460,"y":280,"width":370,"height":90}
+		{"id":"project","type":"text","text":"人确定 Project 的目标与衡量方式","x":-460,"y":100,"width":370,"height":90,"color":"5"},
+		{"id":"explore","type":"text","text":"在 Session 中导入材料，与 AI 探索","x":0,"y":235,"width":370,"height":90}
 	],
 	"edges":[
 		{"id":"project-explore","fromNode":"project","fromSide":"bottom","toNode":"explore","toSide":"top"},
