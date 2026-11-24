@@ -6,15 +6,28 @@ async function request(url,data){
  if(!response.ok)throw Error(await response.text());return response;
 }
 let db, project, task, current, body='', version=0;
-const botHost=(()=> {
- if(window.parent===window || new URLSearchParams(location.search).get('dsbot')!=='1' || !document.referrer)return null;
- const host=new URL(document.referrer);
- return host.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(host.hostname)?host.origin:null;
-})();
+const embeddedBot=window.parent!==window&&new URLSearchParams(location.search).get('dsbot')==='1';
+function trustedBotOrigin(value){
+ if(!value)return null;
+ try{
+  const host=new URL(value);
+  if(host.protocol==='dsh-app:'&&host.host==='app')return 'dsh-app://app';
+  if(host.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(host.hostname))return host.origin;
+ }catch{}
+ return null;
+}
+let botHost=embeddedBot?trustedBotOrigin(document.referrer):null;
 let nativeRoom=null;
 window.addEventListener('message',event=>{
- if(!botHost||event.origin!==botHost||event.source!==parent)return;
+ if(!embeddedBot||event.source!==parent)return;
  const msg=event.data;
+ if(!botHost&&msg?.protocol==='personal-workspace-v1'&&msg.type==='binding'){
+  botHost=trustedBotOrigin(event.origin);
+  if(!botHost)return;
+  installBotControls();
+  if(db)render().catch(e=>message(e.message));
+ }
+ if(!botHost||event.origin!==botHost)return;
  if(msg?.protocol==='personal-workspace-v1'&&msg.type==='binding'&&msg.key===JSON.stringify([project,task?.id||'',current?.id||'']))nativeRoom=msg.room;
 });
 function notifyBot(type,extra={}){
@@ -22,7 +35,7 @@ function notifyBot(type,extra={}){
  const source=current?.id||'',owner=task?.id||'';
  parent.postMessage({protocol:'personal-workspace-v1',type,key:source?JSON.stringify([project,owner,source]):'',title:current?.title||'',source,project,task:owner,...extra},botHost);
 }
-if(botHost){
+function installBotControls(){
  const style=document.createElement('style');
  style.textContent='#assistant,#chatToggle{display:none!important}.layout{grid-template-columns:minmax(100px,24%) minmax(0,1fr)!important}';
  document.head.append(style);
@@ -39,6 +52,11 @@ if(botHost){
  const confirm=button('确认里程碑',()=>beginMilestone(task,current,selectedQuote()));
  confirm.onmousedown=e=>e.preventDefault();actions.append(confirm);
  $('#content').before(actions);
+}
+if(botHost)installBotControls();
+else if(embeddedBot){
+ // DSH desktop can omit the referrer. Ask the parent for its origin before sending document data.
+ parent.postMessage({protocol:'personal-workspace-v1',type:'context',key:''},'*');
 }
 const drafts=new Map();
 const save=button('保存',saveDocument);
