@@ -11,6 +11,12 @@ const botHost=(()=> {
  const host=new URL(document.referrer);
  return host.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(host.hostname)?host.origin:null;
 })();
+let nativeRoom=null;
+window.addEventListener('message',event=>{
+ if(!botHost||event.origin!==botHost||event.source!==parent)return;
+ const msg=event.data;
+ if(msg?.protocol==='personal-workspace-v1'&&msg.type==='binding'&&msg.key===JSON.stringify([project,task?.id||'',current?.id||'']))nativeRoom=msg.room;
+});
 function notifyBot(type,extra={}){
  if(!botHost)return;
  const source=current?.id||'',owner=task?.id||'';
@@ -100,7 +106,7 @@ async function render(){
  current=linked||task||sections[section][0];
  if(botHost){
   if(section==='任务视图'||section==='总览')current=null;
-  notifyBot('context');$('#botActions').hidden=!current?.id.endsWith('.md');
+  nativeRoom=null;notifyBot('context');$('#botActions').hidden=!current?.id.endsWith('.md');
  }
  const read=d=>go(project,task?.id||'',d.id,section);
  renderAssistant();
@@ -196,7 +202,7 @@ async function render(){
 
 function beginMilestone(owner,source,quote='',fromMessage=false){
  const dialog=$('#confirmMilestone'),form=dialog.querySelector('form');
- const session=source.id===current?.id&&$('#taskOverview').hidden?activeSession():null;
+ const session=botHost?(nativeRoom&&/^[a-f0-9-]{36}$/i.test(nativeRoom)?{id:nativeRoom,topic:'DS Bot · '+source.title}:null):source.id===current?.id&&$('#taskOverview').hidden?activeSession():null;
  const conversation=session&&{id:session.id,topic:session.topic||source.title,time:new Date().toISOString()};
  form.reset();form.elements.quote.readOnly=fromMessage;form.elements.quote.value=quote;form.querySelector('[role=alert]').textContent='';dialog.showModal();
  form.onsubmit=async e=>{
