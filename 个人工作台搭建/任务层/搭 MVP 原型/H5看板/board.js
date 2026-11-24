@@ -62,7 +62,8 @@ async function render(){
  const sections={'总览':[],'项目说明':[...new Set([readme||projectDoc,...projectFiles])],'信息':[...raw,...milestones],'任务':files.filter(d=>d.type==='任务'),'产品':files.filter(d=>d.section==='产物层')};
  sections['任务视图']=sections['任务'];
  const inferred=task||linked?.section==='任务层'?'任务':linked?.section==='产物层'?'产品':linked?.section==='信息层'?'信息':linked?'项目说明':'总览';
- const section=Object.hasOwn(sections,args.get('s'))?args.get('s'):inferred;
+ const requested=args.get('s');
+ const section=requested==='项目说明'&&!linked?'总览':Object.hasOwn(sections,requested)?requested:inferred;
  if(section!=='任务')task=null;
  if(section==='任务'&&!task&&linked?.section==='任务层'){
   task=sections['任务'].find(d=>linked.id.startsWith(d.id.slice(0,d.id.lastIndexOf('/')+1)));
@@ -77,8 +78,8 @@ async function render(){
  $('#projectDocs').replaceChildren(...referenceDocs.map(d=>button(d.title,()=>{ $('#projectMenu').open=false;go(project,'',d.id,'项目说明') })));
 
  const choose=(s,d)=>go(project,s==='任务'?d?.id:'',s==='任务'?'':d?.id,s);
- $('#sections').replaceChildren(...Object.keys(sections).map(s=>{
-  const b=button(s==='任务视图'?'任务画布':s,()=>s==='任务视图'?go(project,'','','任务视图'):choose(s,sections[s][0]));b.setAttribute('aria-pressed',String(s===section));return b;
+ $('#sections').replaceChildren(...Object.keys(sections).filter(s=>s!=='项目说明').map(s=>{
+  const b=button(s==='任务视图'?'任务画布':s,()=>s==='任务视图'?go(project,'','','任务视图'):choose(s,sections[s][0]));b.setAttribute('aria-pressed',String(s===section||(s==='总览'&&section==='项目说明')));return b;
  }));
  if(section!=='任务视图')canvasProject='';
  $('#taskOverview').hidden=section!=='任务视图';
@@ -345,12 +346,18 @@ projectForm.onsubmit=async e=>{
 };
 const pendingSummaries=new Set();
 async function showOverview(projectDoc,readme,sections,milestones,turn){
- const panel=$('#overview'),name=projectDoc.project,tasks=sections['任务'],products=sections['产品'];
- panel.replaceChildren(el('h2',name));
+ const panel=el('div',''),name=projectDoc.project,tasks=sections['任务'],products=sections['产品'];
+ $('#overview').replaceChildren(panel);panel.append(el('h2',name));
  const introText=await(await request('/doc?id='+encodeURIComponent((readme||projectDoc).id))).text();
  if(turn!==version)return;
- const intro=introText.replace(/^\uFEFF?---[\s\S]*?^---\s*$/m,'').split(/\r?\n/).filter(l=>l.trim()&&!l.startsWith('#')&&!l.startsWith('!')).join(' ').slice(0,2000);
- if(intro)panel.append(el('p',intro));
+ const document=readme||projectDoc;
+ const bodyText=introText.replace(/^\uFEFF?---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/,'').trim();
+ const card=el('section','');card.className='overviewReadme';
+ const heading=el('div','');heading.append(el('h3','项目说明'),button('编辑与主对话',()=>go(name,'',document.id,'项目说明')));
+ card.append(heading,el('pre',bodyText||'暂无项目说明'));
+ const others=sections['项目说明'].filter(d=>d!==document);
+ if(others.length){const links=el('details','');links.append(el('summary','其他项目文档'));for(const d of others)links.append(button(d.title,()=>go(name,'',d.id,'项目说明')));card.append(links)}
+ $('#overview').append(card);
  panel.append(el('h3','任务进度'),button(tasks.length+' 项任务',()=>go(name,'','','任务视图')),el('p',['待推进','进行中','已完成'].map(status=>status+' '+tasks.filter(d=>d.status===status).length).join('　')),button('创建任务',()=>$('#newTask').click()));
  for(const [label,list,section] of [['认知里程碑',milestones,'信息'],['产物',products,'产品']]){
   panel.append(el('h3',label+' · '+list.length));
