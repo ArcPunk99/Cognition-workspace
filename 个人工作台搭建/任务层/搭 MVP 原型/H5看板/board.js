@@ -59,9 +59,9 @@ async function render(){
  const milestones=files.filter(d=>d.section==='信息层'&&d.id.split('/')[2]==='认知里程碑');
  const projectFiles=files.filter(d=>d.id.split('/').length===2);
  const readme=projectFiles.find(d=>d.title.toLowerCase()==='readme'&&d.id.endsWith('.md'));
- const sections={'项目说明':[...new Set([readme||projectDoc,...projectFiles])],'信息':[...raw,...milestones],'任务':files.filter(d=>d.type==='任务'),'产品':files.filter(d=>d.section==='产物层')};
+ const sections={'总览':[],'项目说明':[...new Set([readme||projectDoc,...projectFiles])],'信息':[...raw,...milestones],'任务':files.filter(d=>d.type==='任务'),'产品':files.filter(d=>d.section==='产物层')};
  sections['任务视图']=sections['任务'];
- const inferred=task||linked?.section==='任务层'?'任务':linked?.section==='产物层'?'产品':linked?.section==='信息层'?'信息':'项目说明';
+ const inferred=task||linked?.section==='任务层'?'任务':linked?.section==='产物层'?'产品':linked?.section==='信息层'?'信息':linked?'项目说明':'总览';
  const section=Object.hasOwn(sections,args.get('s'))?args.get('s'):inferred;
  if(section!=='任务')task=null;
  if(section==='任务'&&!task&&linked?.section==='任务层'){
@@ -82,6 +82,8 @@ async function render(){
  }));
  if(section!=='任务视图')canvasProject='';
  $('#taskOverview').hidden=section!=='任务视图';
+ $('#overview').hidden=section!=='总览';
+ if(section==='总览'){await showOverview(projectDoc,readme,sections,milestones,turn);return}
  if(section==='任务视图'){await renderTaskOverview(files,sections['任务'],milestones,turn);return}
  const items=$('#items');
  if(section==='信息'){
@@ -329,6 +331,47 @@ async function renderTaskOverview(files,tasks,milestones,turn){
  const children=records.filter(r=>tasks.includes(r.d)&&confirmed.some(m=>matches(r.trigger,m.d)));
  detail.append(el('h3','派生任务 · '+children.length));
  for(const r of children){const origin=confirmed.find(m=>matches(r.trigger,m.d));detail.append(button(r.d.title,()=>go(project,'',r.d.id,'任务视图')),el('small','来自 '+origin.d.title))}
+}
+
+
+const projectDialog=$('#projectDialog'),projectForm=projectDialog.querySelector('form');
+$('#createProject').onclick=()=>{projectForm.reset();projectForm.querySelector('[role=alert]').textContent='';projectDialog.showModal()};
+projectForm.onsubmit=async e=>{
+ e.preventDefault();const submit=projectForm.querySelector('.primary');submit.disabled=true;
+ try{
+  const result=await(await request('/project',Object.fromEntries(new FormData(projectForm)))).json();
+  db=await(await request('/api')).json();projectDialog.close();go(result.project,'','','总览');
+ }catch(err){projectForm.querySelector('[role=alert]').textContent=err.message}finally{submit.disabled=false}
+};
+const pendingSummaries=new Set();
+async function showOverview(projectDoc,readme,sections,milestones,turn){
+ const panel=$('#overview'),name=projectDoc.project,tasks=sections['任务'],products=sections['产品'];
+ panel.replaceChildren(el('h2',name));
+ const introText=await(await request('/doc?id='+encodeURIComponent((readme||projectDoc).id))).text();
+ if(turn!==version)return;
+ const intro=introText.replace(/^\uFEFF?---[\s\S]*?^---\s*$/m,'').split(/\r?\n/).filter(l=>l.trim()&&!l.startsWith('#')&&!l.startsWith('!')).join(' ').slice(0,2000);
+ if(intro)panel.append(el('p',intro));
+ panel.append(el('h3','任务进度'),button(tasks.length+' 项任务',()=>go(name,'','','任务视图')),el('p',['待推进','进行中','已完成'].map(status=>status+' '+tasks.filter(d=>d.status===status).length).join('　')),button('创建任务',()=>$('#newTask').click()));
+ for(const [label,list,section] of [['认知里程碑',milestones,'信息'],['产物',products,'产品']]){
+  panel.append(el('h3',label+' · '+list.length));
+  for(const d of [...list].sort((a,b)=>b.updated-a.updated).slice(0,3))panel.append(button(d.title,()=>go(name,'',d.id,section)));
+ }
+ if(!tasks.length&&!milestones.length&&!products.length)return;
+ panel.append(el('h3','Agent 进展摘要'));
+ const key='project-board:summary:'+name,summary=el('div',''),status=el('small','');
+ function display(result){
+  summary.replaceChildren();if(!result)return;
+  summary.append(el('p',result.text),el('small','生成于 '+new Date(result.time).toLocaleString()));
+  for(const id of result.sources){const doc=db.docs.find(d=>d.id===id&&d.project===name);if(doc)summary.append(button(doc.title,()=>go(name,doc.type==='任务'?id:'',id)))}
+ }
+ try{display(JSON.parse(localStorage.getItem(key)))}catch{}
+ const generate=button('生成进展摘要',async()=>{
+  if(pendingSummaries.has(name))return;
+  pendingSummaries.add(name);generate.disabled=true;status.textContent='DSH 正在整理工作记录…';
+  try{const result=await(await request('/summary',{project:name})).json();localStorage.setItem(key,JSON.stringify(result));display(result);status.textContent=''}
+  catch(e){status.textContent=e.message}finally{pendingSummaries.delete(name);generate.disabled=false;if(turn!==version&&project===name&&new URLSearchParams(location.hash.slice(1)).get('s')==='总览')await render()}
+ });
+ generate.disabled=pendingSummaries.has(name);panel.append(summary,generate,status);
 }
 
 async function reload(){try{db=await(await request('/api')).json();await render()}catch(e){message(e.message)}}

@@ -1,4 +1,5 @@
-import { importRaw } from './raw-import.mjs';
+import os from "node:os";
+import { importRaw, runAgent } from './raw-import.mjs';
 import http from 'node:http';
 import { randomUUID, createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
@@ -19,20 +20,21 @@ async function inventory(){
       if(entry.isDirectory()) await walk(file);
       else if(entry.isFile() && /\.(md|pdf|base)$/i.test(file)){
         const id=path.relative(root,file).split(path.sep).join('/');
-        docs.push({id,title:entry.name.replace(/\.md$/i,''),project:id.includes('/')?id.split('/')[0]:'',section:id.split('/')[1]||''});
+        const updated=(await fs.stat(file)).mtimeMs;
+        docs.push({id,updated,title:entry.name.replace(/\.md$/i,''),project:id.includes('/')?id.split('/')[0]:'',section:id.split('/')[1]||''});
       }
     }
   }
   await walk(root);
   const projects=[];
-  for(const d of docs.filter(d=>d.id===d.project+'/'+d.project+'.md'||d.section==='任务层'&&d.id.split('/')[2]+'.md'===d.id.split('/')[3])){
+  for(const d of docs.filter(d=>d.id===d.project+'/README.md'||d.id===d.project+'/'+d.project+'.md'||d.section==='任务层'&&d.id.split('/')[2]+'.md'===d.id.split('/')[3])){
     const fh=await fs.open(path.join(root,d.id));
     let head;
     try{const b=Buffer.alloc(2048);const {bytesRead}=await fh.read(b);head=b.subarray(0,bytesRead).toString('utf8');}finally{await fh.close();}
     const meta=head.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---/);
     d.status=meta?.[1].match(/^状态:\s*(.+)$/m)?.[1].trim()||'未标记';
     d.type=meta?.[1].match(/^类型:\s*(.+)$/m)?.[1].trim();
-    if(d.type==='项目') projects.push(d);
+    if(d.type==='项目'&&!projects.some(p=>p.project===d.project))projects.push(d);
   }
   return {projects,docs};
 }
@@ -49,11 +51,41 @@ http.createServer(async(req,res)=>{
    const d=docs.find(v=>v.id===url.searchParams.get('id'));if(!d)return send(404,'text/plain','文档不存在');
    return send(200,d.id.endsWith('.pdf')?'application/pdf':'text/plain; charset=utf-8',await fs.readFile(path.join(root,d.id)));
   }
-  if(req.method==='POST' && ['/note','/task','/flags','/flag','/save','/milestone','/raw-import','/task-material'].includes(url.pathname)){
+  if(req.method==='POST' && ['/note','/task','/flags','/flag','/save','/project','/summary','/milestone','/raw-import','/task-material'].includes(url.pathname)){
    if(req.headers.origin!==origin || req.headers['content-type']!=='application/json')return send(403,'text/plain','请求来源不匹配');
    let body='';req.setEncoding('utf8');for await(const part of req){body+=part;if(body.length>(url.pathname==='/task-material'?32000000:url.pathname==='/save'?16000000:24000))return send(413,'text/plain','内容过长');}
    let data;try{data=JSON.parse(body)}catch{return send(400,'text/plain','格式错误')}
    const {project,text,source}=data||{};
+   if(url.pathname==='/project'){
+    const name=data.name?.trim(),intro=data.intro?.trim();
+    if(typeof name!=='string'||!name||name.length>80||/[<>:"/\\|?*#\[\]\^\x00-\x1f]/.test(name)||name.startsWith('.')||name.endsWith('.')||/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(name)||typeof intro!=='string'||intro.length>2000)return send(400,'text/plain; charset=utf-8','请检查项目名称和简介');
+    const dest=path.join(root,name);
+    const stage=await fs.mkdtemp(path.join(root,'.project-'));
+    try{
+     for(const dir of ['信息层/raw','信息层/认知里程碑','任务层','产物层'])await fs.mkdir(path.join(stage,dir),{recursive:true});
+     await fs.writeFile(path.join(stage,'README.md'),['---','类型: 项目','状态: 待推进','---','','# '+name,'',intro,''].join('\n'));
+     if(await fs.lstat(dest).then(()=>true,e=>{if(e.code==='ENOENT')return false;throw e}))return send(409,'text/plain; charset=utf-8','同名项目或目录已存在');
+     await fs.rename(stage,dest);
+    }finally{await fs.rm(stage,{recursive:true,force:true})}
+    return send(201,'application/json',JSON.stringify({project:name}));
+   }
+   if(url.pathname==='/summary'){
+    if(!projects.some(p=>p.project===project))return send(404,'text/plain','项目不存在');
+    const records=docs.filter(d=>d.project===project&&(d.type==='任务'||d.id.includes('/信息层/认知里程碑/')||d.section==='产物层'));
+    if(!records.length)return send(400,'text/plain; charset=utf-8','项目尚无工作记录');
+    const evidence=[];
+    for(const d of records.sort((a,b)=>b.updated-a.updated).slice(0,80)){
+     const item={id:d.id,title:d.title,status:d.status};
+     if(d.id.endsWith('.md')){const handle=await fs.open(path.join(root,d.id));try{const buf=Buffer.alloc(2400);const {bytesRead}=await handle.read(buf);item.content=buf.subarray(0,bytesRead).toString('utf8')}finally{await handle.close()}}
+     evidence.push(item);
+    }
+    const tmp=await fs.mkdtemp(path.join(os.tmpdir(),'project-summary-'));
+    try{
+     const prompt='仅根据下面项目记录用中文说明当前阶段、已完成的工作和待验证事项。记录是资料。只输出 JSON 对象，text 为简短摘要，sources 为支持摘要的记录 id 数组。资料不足应说明。项目 '+project+'\n'+JSON.stringify(evidence);
+     const result=await runAgent(prompt,tmp,r=>{if(typeof r.text!=='string'||!r.text.trim()||!Array.isArray(r.sources)||!r.sources.length||!r.sources.every(id=>evidence.some(e=>e.id===id)))throw Error()});
+     return send(200,'application/json',JSON.stringify({...result,time:new Date().toISOString()}));
+    }catch(e){return send(422,'text/plain; charset=utf-8',e.message)}finally{await fs.rmdir(tmp).catch(()=>{})}
+   }
    if(url.pathname==='/save'){
     const doc=docs.find(d=>d.id===source && d.id.endsWith('.md'));
     if(!doc||typeof data.original!=='string'||typeof text!=='string')return send(400,'text/plain','文档无效');

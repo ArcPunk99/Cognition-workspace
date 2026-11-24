@@ -14,6 +14,11 @@ function translate(url, cwd, rules) {
   '仅输出一个 JSON 对象，成功包含 title、source（实际打开的原文 URL）、scope、markdown 四个字符串。scope 写实际读取范围，如摘要、全文、README 或具体章节。保留关键原文链接。不要补写未读内容。',
   '未能读取有效正文时仅输出 {"error":"原因"}。来源 URL：'+url
  ].join('\n');
+ return runAgent(prompt,cwd,result=>{
+  if(!['http:','https:'].includes(new URL(result.source).protocol)||![result.title,result.scope,result.markdown].every(x=>typeof x==='string'&&x.trim()))throw Error();
+ });
+}
+export function runAgent(prompt,cwd,validate){
  return new Promise((resolve,reject)=>{
   const child=spawn(path.join(install,'DeepSeek Harness.exe'),['--expose-internals',path.join(install,'resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/cli.js'),'headless','--permission-mode','read-only','--approval-policy','never','-'],{
    cwd,windowsHide:true,env:{...process.env,ELECTRON_RUN_AS_NODE:'1'},stdio:['pipe','pipe','pipe']
@@ -35,10 +40,9 @@ function translate(url, cwd, rules) {
    try{
     const result=JSON.parse(output.trim().replace(/^\x60{3}(?:json)?\s*/i,'').replace(/\s*\x60{3}$/,''));
     if(typeof result.error==='string')return reject(Error(result.error.slice(0,250)));
-    if(!['http:','https:'].includes(new URL(result.source).protocol))throw Error();
-    if(![result.title,result.scope,result.markdown].every(x=>typeof x==='string'&&x.trim()))throw Error();
+    validate(result);
     resolve(result);
-   }catch{reject(Error('DSH 未返回完整的 Markdown 结果，请重试'))}
+   }catch{reject(Error('DSH 未返回完整的处理结果，请重试'))}
   });
   child.stdin.end(prompt);
  });
