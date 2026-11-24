@@ -106,6 +106,7 @@ async function render(){
  if(hit.length===1&&hit[0]!==projectDoc)matches.add(hit[0].id)}
  const related=files.filter(d=>d!==task&&(d.id.startsWith(prefix)||matches.has(d.id)));
  $('#related').append(el('h3',task.title+' · 关联资料'),...[task,...related].map(d=>{const b=button(d===task?'任务说明':d.title,()=>read(d));if(d===current)b.setAttribute('aria-current','true');return b}));
+ $('#related').append(button('＋ 添加任务资料',openMaterial));
  if(!related.length)$('#related').append(el('p','可在任务页用双链关联资料，或将文档放入任务目录。'));
  }
  if(!task)$('#related').append(el('h3','任务文档'),el('p','选择左侧任务查看关联资料。'));
@@ -394,6 +395,7 @@ function renderAssistant(){
   composer.hidden=!session||session.closed;$('#startChat').hidden=!!session||!current;
   for(const entry of session?.entries||[]){
    const line=el('p',entry.text);line.className='bubble';
+   if(entry.kind==='material'){line.replaceChildren(button('资料 · '+entry.text.split('/').pop(),()=>go(project,task?.id||'',entry.text,'任务')))}
    if(entry.quote)line.append(el('blockquote',entry.quote));
    if(entry.kind==='message'&&task&&current?.id.endsWith('.md')&&entry.text.length<=4000)line.append(button('确认成里程碑',()=>beginMilestone(task,current,entry.text,true)));
    log.append(line);
@@ -427,7 +429,7 @@ for(const card of document.querySelectorAll('[data-flow]')){
  card.onclick=()=>{
   const quote=selectedQuote();
   if(!recordEntry(card.textContent,card.dataset.flow,quote))return;
-  if(card.dataset.flow==='milestone'&&task&&current.id.endsWith('.md'))beginMilestone(task,current,quote);
+  if(card.dataset.flow==='milestone'&&current.project&&current.id.endsWith('.md'))beginMilestone(task,current,quote);
   else if(card.dataset.flow==='task'){$('#newTask').click();$('#taskDialog form').elements.context.value='来源：[['+current.id.replace(/\.md$/,'')+']]'+(quote?'\n'+quote:'')}else promptBox.focus();
  };
 }
@@ -442,6 +444,38 @@ function toggleChat(open){
 }
 $('#chatToggle').onclick=()=>toggleChat(!$('#assistant').classList.contains('open'));
 $('#closeChat').onclick=()=>toggleChat(false);
+const materialDialog=$('#materialDialog'),materialForm=materialDialog.querySelector('form');
+function openMaterial(){
+ materialForm.reset();
+ const pick=materialForm.elements.existing;
+ pick.replaceChildren(new Option('选择已有资料，或导入新资料',''),...db.docs.filter(d=>d.id.startsWith(project+'/信息层/raw/')).map(d=>new Option(d.title,d.id)));
+ materialForm.querySelector('[role=alert]').textContent='';materialDialog.showModal();
+}
+materialForm.onsubmit=async event=>{
+ event.preventDefault();
+ const f=materialForm.elements,upload=f.upload.files[0],url=f.url.value.trim(),id=f.existing.value;
+ const submit=materialForm.querySelector('.primary'),owner=task,contextKey=chatKey;
+ const error=materialForm.querySelector('[role=alert]');submit.disabled=true;
+ try{
+  if(!owner)throw Error('请选择任务');
+  if(id&&(upload||url))throw Error('已有资料和新资料请选择一种');
+  if(!id&&!upload&&!url)throw Error('请选择资料或填写链接');
+  if(f.usage.value==='chat'&&activeSession()?.closed)throw Error('当前讨论已结束，请先另开讨论');
+  const data={project,source:owner.id,id,url};
+  if(upload){
+   if(upload.size>22*1024*1024||!upload.size)throw Error('请选择 22 MB 以内的非空文件');
+   const encoded=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=()=>reject(Error('文件读取失败'));reader.readAsDataURL(upload)});
+   Object.assign(data,{name:upload.name,file:encoded});
+  }
+  const result=await(await request('/task-material',data)).json();
+  let note='资料已加入任务';
+  if(f.usage.value==='chat'){
+   const saved=contextKey===chatKey&&recordEntry(result.id,'material');
+   note=saved?'已入库，并在当前讨论中引用':'资料已入库；会话引用尚未保存';
+  }
+  materialDialog.close();await reload();message(note);
+ }catch(e){error.textContent=e.message}finally{submit.disabled=false}
+};
 const rawDialog=$('#rawDialog'),rawForm=rawDialog.querySelector('form');
 let rawProject='',importing=false;
 function openRawDialog(){

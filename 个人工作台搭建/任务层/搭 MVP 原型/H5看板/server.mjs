@@ -1,6 +1,6 @@
 import { importRaw } from './raw-import.mjs';
 import http from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -49,9 +49,9 @@ http.createServer(async(req,res)=>{
    const d=docs.find(v=>v.id===url.searchParams.get('id'));if(!d)return send(404,'text/plain','文档不存在');
    return send(200,d.id.endsWith('.pdf')?'application/pdf':'text/plain; charset=utf-8',await fs.readFile(path.join(root,d.id)));
   }
-  if(req.method==='POST' && ['/note','/task','/flags','/flag','/save','/milestone','/raw-import'].includes(url.pathname)){
+  if(req.method==='POST' && ['/note','/task','/flags','/flag','/save','/milestone','/raw-import','/task-material'].includes(url.pathname)){
    if(req.headers.origin!==origin || req.headers['content-type']!=='application/json')return send(403,'text/plain','请求来源不匹配');
-   let body='';req.setEncoding('utf8');for await(const part of req){body+=part;if(body.length>(url.pathname==='/save'?16000000:24000))return send(413,'text/plain','内容过长');}
+   let body='';req.setEncoding('utf8');for await(const part of req){body+=part;if(body.length>(url.pathname==='/task-material'?32000000:url.pathname==='/save'?16000000:24000))return send(413,'text/plain','内容过长');}
    let data;try{data=JSON.parse(body)}catch{return send(400,'text/plain','格式错误')}
    const {project,text,source}=data||{};
    if(url.pathname==='/save'){
@@ -70,6 +70,45 @@ http.createServer(async(req,res)=>{
     }finally{writing.delete(source);await fs.unlink(tmp).catch(()=>{})}
    }
    if(!projects.some(p=>p.project===project))return send(400,'text/plain','项目不存在');
+   if(url.pathname==='/task-material'){
+    const owner=docs.find(d=>d.project===project&&d.type==='任务'&&d.id===source);
+    if(!owner)return send(400,'text/plain; charset=utf-8','找不到所属任务');
+    if(writing.has(source))return send(409,'text/plain; charset=utf-8','任务正在保存，请重试');
+    const taskPath=path.join(root,source);
+    writing.add(source);
+    try{
+     let id=data.id;
+     if(!id){
+      let url='';
+      if(data.url){try{const u=new URL(data.url);if(!['https:','http:'].includes(u.protocol)||u.username||u.password)throw Error();url=u.href}catch{return send(400,'text/plain; charset=utf-8','来源链接无效')}}
+      let bytes,name;
+      if(data.file){
+       if(typeof data.file!=='string'||typeof data.name!=='string'||!/\.(md|pdf)$/i.test(data.name))return send(400,'text/plain; charset=utf-8','请选择 Markdown 或 PDF');
+       bytes=Buffer.from(data.file,'base64');name=data.name;
+      }else{
+       if(!url)return send(400,'text/plain; charset=utf-8','请选择资料或填写链接');
+       name='链接 '+new URL(url).hostname+'.md';bytes=Buffer.from('# 外部资料链接\n\n来源：<'+url+'>\n\n收录范围：仅登记链接，原文尚未获取。\n');
+      }
+      const safe=name.replace(/[<>:"/\\|?*#\[\]^\x00-\x1f]/g,' ').slice(-110);
+      const hash=createHash('sha256').update(bytes).digest('hex').slice(0,16);
+      let folder=path.join(root,project);
+      for(const part of ['信息层','raw']){folder=path.join(folder,part);await fs.mkdir(folder,{recursive:true});if(await fs.realpath(folder)!==folder)throw Error('Raw 路径异常')}
+      const file='原件 '+hash+' '+safe;id=[project,'信息层','raw',file].join('/');
+      const dest=path.join(folder,file),tmp=path.join(folder,'.'+randomUUID()+'.tmp');
+      try{
+       await fs.writeFile(tmp,bytes,{flag:'wx'});
+       try{await fs.link(tmp,dest)}catch(e){if(e.code!=='EEXIST')throw e;if(!(await fs.lstat(dest)).isFile()||!(await fs.readFile(dest)).equals(bytes))return send(409,'text/plain; charset=utf-8','已有资料已修改，请核对原件')}
+      }finally{await fs.unlink(tmp).catch(()=>{})}
+     }else if(!docs.some(d=>d.id===id&&d.project===project&&id.startsWith(project+'/信息层/raw/')))return send(400,'text/plain; charset=utf-8','请选择本项目 Raw 资料');
+     const link='[['+id+']]';
+     const previous=await fs.readFile(taskPath,'utf8');
+     if(!previous.includes(link)){
+      const suffix=typeof data.url==='string'&&data.file?'　来源：<'+new URL(data.url).href+'>':'';
+      await fs.appendFile(taskPath,'\n资料：'+link+suffix+'\n');
+     }
+     return send(200,'application/json',JSON.stringify({id}));
+    }finally{writing.delete(source)}
+   }
    if(url.pathname==='/raw-import'){
     try{return send(200,'application/json',JSON.stringify(await importRaw(root,project,data.url)))}
     catch(err){return send(422,'text/plain; charset=utf-8',err.message)}
