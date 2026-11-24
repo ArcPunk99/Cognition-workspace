@@ -6,6 +6,34 @@ async function request(url,data){
  if(!response.ok)throw Error(await response.text());return response;
 }
 let db, project, task, current, body='', version=0;
+const botHost=(()=> {
+ if(window.parent===window || new URLSearchParams(location.search).get('dsbot')!=='1' || !document.referrer)return null;
+ const host=new URL(document.referrer);
+ return host.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(host.hostname)?host.origin:null;
+})();
+function notifyBot(type,extra={}){
+ if(!botHost)return;
+ const source=current?.id||'',owner=task?.id||'';
+ parent.postMessage({protocol:'personal-workspace-v1',type,key:source?JSON.stringify([project,owner,source]):'',title:current?.title||'',source,project,task:owner,...extra},botHost);
+}
+if(botHost){
+ const style=document.createElement('style');
+ style.textContent='#assistant,#chatToggle{display:none!important}.layout{grid-template-columns:minmax(100px,24%) minmax(0,1fr)!important}';
+ document.head.append(style);
+ const actions=document.createElement('div');actions.className='row';actions.id='botActions';
+ for(const [flow,label] of [['milestone','生成里程碑'],['task','生成任务']]){
+  const btn=button(label,()=>{
+   if(!current?.id.endsWith('.md'))return message('请选择 Markdown 文档');
+   const quote=selectedQuote();
+   if(!quote)return message('请先选中要讨论的原文');
+   if(quote.length>8000)return message('请将选段缩短到 8000 字以内');
+   notifyBot('trigger',{flow,quote});
+  });btn.onmousedown=e=>e.preventDefault();actions.append(btn);
+ }
+ const confirm=button('确认里程碑',()=>beginMilestone(task,current,selectedQuote()));
+ confirm.onmousedown=e=>e.preventDefault();actions.append(confirm);
+ $('#content').before(actions);
+}
 const drafts=new Map();
 const save=button('保存',saveDocument);
 save.className='primary';
@@ -51,7 +79,7 @@ async function render(){
  $('#cards').replaceChildren();for(const p of db.projects){
  const tasks=db.docs.filter(d=>d.project===p.project&&d.type==='任务');
  const b=button('',()=>go(p.project));b.className='card';b.append(el('b',p.project),el('span',p.status+' · '+tasks.length+' 项任务 · '+tasks.filter(d=>d.status==='已完成').length+' 项完成'));$('#cards').append(b)}
- if(!projectDoc){canvasProject='';if(!db.projects.length)message('仓库中还没有项目页');return}
+ if(!projectDoc){current=null;task=null;notifyBot('context');canvasProject='';if(!db.projects.length)message('仓库中还没有项目页');return}
  const files=db.docs.filter(d=>d.project===project);
  task=files.find(d=>d.id===args.get('t')&&d.type==='任务');
  const linked=db.docs.find(d=>d.id===args.get('d')&&(d.project===project||!d.project));
@@ -70,6 +98,10 @@ async function render(){
  }
  if(section==='任务'&&!task&&!linked)task=sections['任务'][0];
  current=linked||task||sections[section][0];
+ if(botHost){
+  if(section==='任务视图'||section==='总览')current=null;
+  notifyBot('context');$('#botActions').hidden=!current?.id.endsWith('.md');
+ }
  const read=d=>go(project,task?.id||'',d.id,section);
  renderAssistant();
  $('#projectName').textContent=project;
