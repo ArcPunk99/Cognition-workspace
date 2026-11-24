@@ -202,7 +202,8 @@ async function render(){
 
 function beginMilestone(owner,source,quote='',fromMessage=false){
  const dialog=$('#confirmMilestone'),form=dialog.querySelector('form');
- const session=botHost?(nativeRoom&&/^[a-f0-9-]{36}$/i.test(nativeRoom)?{id:nativeRoom,topic:'DS Bot · '+source.title}:null):source.id===current?.id&&$('#taskOverview').hidden?activeSession():null;
+ const nativeId=typeof nativeRoom==='string'?nativeRoom.replace(/^session-/,''):'';
+ const session=botHost?(/^[a-f0-9-]{36}$/i.test(nativeId)?{id:nativeId,topic:('DS Bot · '+nativeRoom+' · '+source.title).slice(0,200)}:null):source.id===current?.id&&$('#taskOverview').hidden?activeSession():null;
  const conversation=session&&{id:session.id,topic:session.topic||source.title,time:new Date().toISOString()};
  form.reset();form.elements.quote.readOnly=fromMessage;form.elements.quote.value=quote;form.querySelector('[role=alert]').textContent='';dialog.showModal();
  form.onsubmit=async e=>{
