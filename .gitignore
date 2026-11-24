@@ -1,0 +1,10 @@
+# Obsidian 工作区状态（每台设备各自维护，提交了会互相覆盖布局）
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache
+
+# 回收站与系统文件
+.trash/
+.DS_Store
+Thumbs.db
+desktop.ini

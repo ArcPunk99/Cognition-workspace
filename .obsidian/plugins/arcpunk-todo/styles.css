@@ -1,0 +1,212 @@
+.arcpunk-todo-slot > ul.contains-task-list[hidden],
+.arcpunk-todo-slot > .arcpunk-todo-ui[hidden] { display: none; }
+.arcpunk-todo-archive-slot > ul[hidden],
+.arcpunk-todo-archive-slot > .arcpunk-todo-ui[hidden] { display: none; }
+.markdown-preview-view.todo-archive .metadata-container,
+.markdown-preview-view.todo-archive .inline-title { display: none; }
+.markdown-preview-view.zone-board .metadata-container,
+.markdown-preview-view.zone-board .inline-title { display: none; }
+.arcpunk-zone-slot > table[hidden],
+.arcpunk-zone-slot > .arcpunk-zones-ui[hidden] { display: none; }
+.arcpunk-todo-ui {
+  --arcpunk-todo-border: var(--background-modifier-border);
+  display: block;
+  margin: 0.7rem 0 1.2rem;
+}
+.arcpunk-todo-ui .arcpunk-todo-group { margin: 0 0 1.4rem; }
+.arcpunk-todo-ui .arcpunk-todo-group-title {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  margin: 0 0 0.7rem;
+}
+.arcpunk-todo-ui .arcpunk-todo-list { display: grid; gap: 0.65rem; }
+.arcpunk-todo-ui .arcpunk-todo-item {
+  padding: 0.95rem 1rem 0.85rem;
+  border: 1px solid var(--arcpunk-todo-border);
+  border-radius: 12px;
+  background: var(--background-secondary);
+}
+.arcpunk-todo-ui .arcpunk-todo-item[hidden] { display: none; }
+.arcpunk-todo-ui .arcpunk-todo-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+.arcpunk-todo-ui .arcpunk-todo-check-label {
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.arcpunk-todo-ui .arcpunk-todo-checkbox {
+  flex: 0 0 auto;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0.16rem 0 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.arcpunk-todo-ui .arcpunk-todo-title { overflow-wrap: anywhere; line-height: 1.5; }
+.arcpunk-todo-ui .arcpunk-todo-actions { display: flex; flex: 0 0 auto; gap: 0.2rem; }
+.arcpunk-todo-ui .arcpunk-todo-progress-button {
+  height: 1.75rem;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--arcpunk-todo-border);
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+}
+.arcpunk-todo-ui .arcpunk-todo-progress-button:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.arcpunk-todo-ui .arcpunk-todo-icon-button {
+  padding: 0.25rem;
+  height: 1.75rem;
+  width: 1.75rem;
+  box-shadow: none;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+}
+.arcpunk-todo-ui .arcpunk-todo-icon-button:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.arcpunk-todo-ui .arcpunk-todo-discard:hover { color: var(--text-error); }
+.arcpunk-todo-ui .arcpunk-todo-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.1rem;
+  margin: 0.4rem 0 0 1.85rem;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.arcpunk-todo-ui .is-overdue { color: var(--text-error); }
+.arcpunk-todo-ui .arcpunk-todo-details,
+.arcpunk-todo-ui .arcpunk-todo-progress { margin: 0.55rem 0 0 1.85rem; }
+.arcpunk-todo-ui .arcpunk-todo-details > summary,
+.arcpunk-todo-ui .arcpunk-todo-progress > summary {
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-ui-smaller);
+}
+.arcpunk-todo-ui .arcpunk-todo-detail-body { font-size: var(--font-small); overflow-wrap: anywhere; }
+.arcpunk-todo-ui .arcpunk-todo-detail-body > :last-child { margin-bottom: 0; }
+.arcpunk-todo-ui .arcpunk-todo-progress-entry { border-inline-start: 2px solid var(--arcpunk-todo-border); padding-inline-start: 0.65rem; margin-top: 0.65rem; }
+.arcpunk-todo-ui .arcpunk-todo-progress-heading { color: var(--text-muted); font-size: var(--font-ui-smaller); margin: 0; }
+.arcpunk-todo-ui .arcpunk-todo-result {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 0.8rem;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.arcpunk-todo-ui .arcpunk-todo-empty { color: var(--text-muted); }
+.arcpunk-todo-ui .arcpunk-todo-error { color: var(--text-error); }
+.arcpunk-todo-ui .arcpunk-todo-state-warning { color: var(--text-muted); font-size: var(--font-ui-smaller); margin: 0.4rem 0 0 1.85rem; }
+.arcpunk-todo-archive-ui .arcpunk-todo-archive-header { display: flex; align-items: center; flex-wrap: wrap; gap: 0.55rem; }
+.arcpunk-todo-archive-ui .arcpunk-todo-title { flex: 1; min-width: 0; }
+.arcpunk-todo-archive-ui .arcpunk-todo-archive-status { color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.arcpunk-todo-archive-ui .arcpunk-todo-archive-category { color: var(--text-muted); font-size: var(--font-ui-smaller); border: 1px solid var(--background-modifier-border); border-radius: 5px; padding: 0.05rem 0.35rem; }
+.arcpunk-todo-archive-ui .arcpunk-todo-archive-times,
+.arcpunk-todo-archive-ui .arcpunk-todo-details,
+.arcpunk-todo-archive-ui .arcpunk-todo-progress { margin-inline-start: 0; }
+.arcpunk-todo-notice { display: inline-flex; gap: 0.7rem; align-items: center; flex-wrap: wrap; }
+.arcpunk-todo-edit-modal .arcpunk-todo-edit-title { color: var(--text-muted); overflow-wrap: anywhere; }
+.arcpunk-todo-edit-modal .arcpunk-todo-edit-form { display: grid; gap: 0.85rem; }
+.arcpunk-todo-edit-modal .arcpunk-todo-edit-field { display: grid; gap: 0.35rem; }
+.arcpunk-todo-edit-modal .arcpunk-todo-edit-field input,
+.arcpunk-todo-edit-modal .arcpunk-todo-edit-field textarea { width: 100%; }
+.arcpunk-todo-edit-modal .arcpunk-todo-edit-field textarea { resize: vertical; }
+.arcpunk-todo-edit-modal .arcpunk-todo-edit-field select { width: 100%; }
+.arcpunk-todo-edit-modal .arcpunk-todo-edit-error { color: var(--text-error); min-height: 1.1em; margin: 0; font-size: var(--font-ui-small); }
+.arcpunk-todo-edit-modal .arcpunk-todo-edit-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+.arcpunk-zones-ui { display: grid; gap: 0.7rem; min-width: 0; }
+.arcpunk-zones-ui .arcpunk-zone-card { min-width: 0; overflow-wrap: anywhere; }
+.arcpunk-zones-ui .arcpunk-zone-header { display: flex; align-items: flex-start; gap: 0.6rem; }
+.arcpunk-zones-ui .arcpunk-zone-title { flex: 1; min-width: 0; font-weight: 600; }
+.arcpunk-zones-ui .arcpunk-zone-title > p { margin: 0; }
+.arcpunk-zones-ui .arcpunk-zone-badge { color: var(--text-muted); font-size: var(--font-ui-smaller); white-space: nowrap; }
+.arcpunk-zones-ui .arcpunk-zone-time,
+.arcpunk-zones-ui .arcpunk-zone-fold { margin-inline-start: 0; }
+.arcpunk-zones-ui .arcpunk-zone-description { margin-top: 0.5rem; }
+.arcpunk-zones-ui .arcpunk-zone-description > :first-child { margin-top: 0; }
+.arcpunk-zones-ui .arcpunk-zone-choices { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.4rem; margin: 0.7rem 0 0.2rem; }
+.arcpunk-zones-ui .arcpunk-zone-choice { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; font-size: var(--font-ui-small); cursor: pointer; }
+.arcpunk-zones-ui .arcpunk-zone-choice input { margin: 0; flex: 0 0 auto; }
+.arcpunk-zones-ui .arcpunk-zone-choice-value,
+.arcpunk-zones-ui .arcpunk-zone-original-choice { color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.arcpunk-zones-ui .arcpunk-zone-field-label { color: var(--text-muted); font-size: var(--font-ui-smaller); margin: 0.55rem 0 0.15rem; }
+.arcpunk-zones-ui .arcpunk-zone-original-field > div > :first-child,
+.arcpunk-zones-ui .arcpunk-zone-extra > div > :first-child { margin-top: 0; }
+.arcpunk-zones-ui .arcpunk-zone-actions { display: flex; justify-content: flex-end; margin-top: 0.6rem; }
+.arcpunk-zones-ui .arcpunk-zone-extra { overflow-wrap: anywhere; }
+.arcpunk-zones-ui img,
+.arcpunk-zones-ui video { max-width: 100%; }
+.arcpunk-zones-ui pre { max-width: 100%; overflow-x: auto; }
+.arcpunk-zones-ui .arcpunk-todo-detail-body table { display: block; max-width: 100%; overflow-x: auto; }
+@media (max-width: 500px) {
+  .arcpunk-todo-ui .arcpunk-todo-item { padding: 0.8rem; }
+  .arcpunk-todo-ui .arcpunk-todo-times { display: grid; }
+  .arcpunk-todo-ui .arcpunk-todo-main { flex-wrap: wrap; }
+  .arcpunk-todo-ui .arcpunk-todo-check-label { flex-basis: 100%; }
+  .arcpunk-todo-ui .arcpunk-todo-actions { margin-inline-start: auto; }
+}
+
+/* Daily choices and lightweight interest / rumination views. */
+.arcpunk-light-slot > table[hidden], .arcpunk-light-slot > .arcpunk-light-ui[hidden] { display: none; }
+.arcpunk-light-scroll { overflow-x: auto; max-width: 100%; }
+.arcpunk-light-table { width: 100%; font-size: var(--font-small); }
+.arcpunk-light-annotation-button { display: block; margin-top: 0.5rem; font-size: var(--font-ui-smaller); }
+.arcpunk-light-annotation-hint { color: var(--text-muted); font-size: var(--font-ui-small); }
+.arcpunk-light-table th { white-space: nowrap; }
+.arcpunk-light-table td { vertical-align: top; min-width: 7rem; overflow-wrap: anywhere; }
+.arcpunk-light-table td:first-child { min-width: 12rem; }
+.arcpunk-light-table td > :first-child { margin-top: 0; }
+.arcpunk-light-table td > :last-child { margin-bottom: 0; }
+.arcpunk-light-select { min-width: 7.5rem; max-width: 100%; }
+.arcpunk-light-check { cursor: pointer; width: 1.1rem; height: 1.1rem; }
+.arcpunk-light-original { display: block; color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.arcpunk-light-history { margin-top: 1rem; }
+.arcpunk-light-history > summary { cursor: pointer; color: var(--text-muted); }
+.arcpunk-light-heading { margin-top: 0.8rem; }
+
+/* Intake cards are a view of the same nine-column Markdown source. */
+.markdown-preview-view:has(.arcpunk-intake-workbench) .metadata-container,
+.markdown-preview-view:has(.arcpunk-intake-workbench) .inline-title { display: none; }
+.arcpunk-intake-workbench { display: grid; gap: 1rem; min-width: 0; }
+.arcpunk-intake-card { min-width: 0; overflow-wrap: anywhere; }
+.arcpunk-intake-title { font-size: var(--font-text-size); font-weight: 600; line-height: 1.5; }
+.arcpunk-intake-title > :first-child,
+.arcpunk-intake-hint > :first-child,
+.arcpunk-intake-feedback > :first-child { margin-top: 0; }
+.arcpunk-intake-title > :last-child,
+.arcpunk-intake-hint > :last-child,
+.arcpunk-intake-feedback > :last-child { margin-bottom: 0; }
+.arcpunk-intake-hint { color: var(--text-muted); font-size: var(--font-small); line-height: 1.6; margin-top: 0.5rem; }
+.arcpunk-intake-destination { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.5rem; padding: 0.8rem 0; }
+.arcpunk-intake-choice { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; font-size: var(--font-ui-small); }
+.arcpunk-intake-choice .arcpunk-light-check { margin: 0; }
+.arcpunk-intake-overview,
+.arcpunk-intake-details,
+.arcpunk-intake-todo,
+.arcpunk-intake-extra { min-width: 0; margin-top: 0.75rem; }
+.arcpunk-intake-overview { border-top: 1px solid var(--background-modifier-border); padding-top: 0.75rem; }
+.arcpunk-intake-field-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.4rem; }
+.arcpunk-todo-ui .arcpunk-intake-section-title { margin: 0; font-size: var(--font-ui-small); font-weight: 600; }
+.arcpunk-intake-detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 0.7rem; margin-top: 0.5rem; }
+.arcpunk-intake-detail { min-width: 0; padding: 0.7rem; border: 1px solid var(--background-modifier-border); border-radius: 8px; background: var(--background-primary); }
+.arcpunk-intake-feedback { font-size: var(--font-small); line-height: 1.6; overflow-wrap: anywhere; }
+.arcpunk-intake-empty { color: var(--text-muted); font-size: var(--font-ui-smaller); margin: 0; }
+.arcpunk-todo-ui .arcpunk-intake-annotation-button { display: inline-flex; align-items: center; height: auto; min-height: 1.9rem; margin-top: 0; }
+.arcpunk-intake-more { margin-top: 0.8rem; }
+.arcpunk-intake-more > summary { color: var(--text-muted); font-size: var(--font-ui-small); cursor: pointer; }
+.arcpunk-intake-card img,
+.arcpunk-intake-card video { max-width: 100%; }
+.arcpunk-intake-card pre { max-width: 100%; overflow-x: auto; }
+.arcpunk-intake-feedback table { display: block; max-width: 100%; overflow-x: auto; }
+@media (max-width: 600px) {
+  .arcpunk-intake-detail-grid { grid-template-columns: 1fr; }
+  .arcpunk-intake-field-header { align-items: flex-start; }
+}

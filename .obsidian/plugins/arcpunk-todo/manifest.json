@@ -1,0 +1,9 @@
+{
+  "id": "arcpunk-todo",
+  "name": "ArcPunk 待办清单",
+  "version": "0.7.1",
+  "minAppVersion": "1.5.0",
+  "description": "总待办与工作区项目待办共用分类卡片、时间编辑、追加进度和撤销；各自归档只读回查，资料批注工作台沿用。",
+  "author": "ArcPunk",
+  "isDesktopOnly": true
+}
