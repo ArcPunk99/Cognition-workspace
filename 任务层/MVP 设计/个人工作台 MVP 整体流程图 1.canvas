@@ -1,0 +1,35 @@
+{
+	"nodes":[
+		{"id":"trigger","type":"text","text":"人发现值得保留的内容？","x":0,"y":485,"width":370,"height":90,"color":"5"},
+		{"id":"record","type":"text","text":"AI 整理为 Milestone，保留原文出处","x":0,"y":660,"width":370,"height":90,"color":"4"},
+		{"id":"action","type":"text","text":"当前需要推进一项 Task？","x":0,"y":835,"width":370,"height":90,"color":"3"},
+		{"id":"task","type":"text","text":"AI 整理 Task 的目标、完成条件和执行材料","x":0,"y":1010,"width":370,"height":90,"color":"4"},
+		{"id":"execute","type":"text","text":"在任务 Session 中人机协同执行","x":0,"y":1185,"width":370,"height":90},
+		{"id":"capture","type":"text","text":"AI 补记 Milestone，保留来源","x":560,"y":1285,"width":370,"height":90,"color":"4"},
+		{"id":"review","type":"text","text":"人按完成条件验收 Task","x":0,"y":1410,"width":370,"height":90,"color":"5"},
+		{"id":"projectReview","type":"text","text":"人依据阶段成果判断 Project 目标是否达成","x":0,"y":1625,"width":370,"height":90,"color":"5"},
+		{"id":"done","type":"text","text":"项目收尾","x":0,"y":1840,"width":370,"height":90},
+		{"id":"notes","type":"text","text":"- **Milestone** 可以保留阶段性想法、已确认的判断、待解问题或执行成果。保留来源，后续可以回到原始对话核对。\n- **Task** 围绕明确的目标和完成条件推进。执行中遇到超出范围的问题，先记录，由人决定是否另行推进。\n- **在 MVP 原型中**，DSH 承载会话、摘录与出处查看。人工确认的摘录写回当前任务页，在 Obsidian 可读。经人确认的正式交付进入产物层，由任务页链接过去。\n\n来源：[构建个人工作台框架](chatgpt-conversation://6b0163f0-51b0-83e8-aba1-a5dd397ca664)","x":1340,"y":-80,"width":450,"height":360},
+		{"id":"title","type":"text","text":"## 个人工作台 MVP 整体流程图\n\n[[MVP 设计]] · [[个人工作台 MVP 设计原型]]","x":-460,"y":-120,"width":370,"height":120},
+		{"id":"project","type":"text","text":"人确定 Project 的目标与衡量方式","x":-460,"y":140,"width":370,"height":90,"color":"5"},
+		{"id":"explore","type":"text","text":"在 Session 中导入材料，与 AI 探索","x":-460,"y":280,"width":370,"height":90}
+	],
+	"edges":[
+		{"id":"project-explore","fromNode":"project","fromSide":"bottom","toNode":"explore","toSide":"top"},
+		{"id":"explore-trigger","fromNode":"explore","fromSide":"bottom","toNode":"trigger","toSide":"top"},
+		{"id":"trigger-explore","fromNode":"trigger","fromSide":"left","toNode":"explore","toSide":"left","label":"继续讨论"},
+		{"id":"trigger-record","fromNode":"trigger","fromSide":"bottom","toNode":"record","toSide":"top","label":"主动触发"},
+		{"id":"record-action","fromNode":"record","fromSide":"bottom","toNode":"action","toSide":"top"},
+		{"id":"action-explore","fromNode":"action","fromSide":"right","toNode":"explore","toSide":"right","label":"继续探索"},
+		{"id":"action-projectReview","fromNode":"action","fromSide":"left","toNode":"projectReview","toSide":"left","label":"已有足够依据判断项目目标"},
+		{"id":"action-task","fromNode":"action","fromSide":"bottom","toNode":"task","toSide":"top","label":"需要推进"},
+		{"id":"task-execute","fromNode":"task","fromSide":"bottom","toNode":"execute","toSide":"top"},
+		{"id":"execute-capture","fromNode":"execute","fromSide":"right","toNode":"capture","toSide":"top","label":"人触发保存新判断、待解问题或阶段成果"},
+		{"id":"capture-execute","fromNode":"capture","fromSide":"left","toNode":"execute","toSide":"right"},
+		{"id":"execute-review","fromNode":"execute","fromSide":"bottom","toNode":"review","toSide":"top","label":"提交阶段成果"},
+		{"id":"review-execute","fromNode":"review","fromSide":"left","toNode":"execute","toSide":"left","label":"继续处理"},
+		{"id":"review-projectReview","fromNode":"review","fromSide":"bottom","toNode":"projectReview","toSide":"top","label":"确认收尾"},
+		{"id":"projectReview-explore","fromNode":"projectReview","fromSide":"left","toNode":"explore","toSide":"left","label":"还需推进"},
+		{"id":"projectReview-done","fromNode":"projectReview","fromSide":"bottom","toNode":"done","toSide":"top","label":"确认达成"}
+	]
+}

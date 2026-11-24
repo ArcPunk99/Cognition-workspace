@@ -1,0 +1,28 @@
+filters:
+  and:
+    - note["所属项目"] == link("个人工作台搭建/个人工作台搭建")
+    - '["任务", "来源材料", "里程碑"].contains(note["类型"])'
+formulas:
+  progress: if(note["类型"] == "任务", note["状态"], if(note["类型"] == "来源材料", if(note["审阅状态"], note["审阅状态"], "未记录")))
+properties:
+  file.name:
+    displayName: 笔记
+  formula.progress:
+    displayName: 任务进度 / Raw 审阅
+  note.依据:
+    displayName: 依据
+views:
+  - type: table
+    name: 项目进度
+    groupBy:
+      property: 所属项目
+      direction: ASC
+    order:
+      - file.name
+      - formula.progress
+      - 依据
+    sort:
+      - property: 类型
+        direction: DESC
+    columnSize:
+      formula.progress: 200
