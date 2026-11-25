@@ -6,7 +6,8 @@ async function request(url,data){
  if(!response.ok)throw Error(await response.text());return response;
 }
 let db, project, task, current, body='', version=0;
-const embeddedBot=window.parent!==window&&new URLSearchParams(location.search).get('dsbot')==='1';
+const nativeWorkspace=new URLSearchParams(location.search).get('native')==='1';
+const embeddedBot=window.parent!==window&&(nativeWorkspace||new URLSearchParams(location.search).get('dsbot')==='1');
 function trustedBotOrigin(value){
  if(!value)return null;
  try{
@@ -28,6 +29,10 @@ window.addEventListener('message',event=>{
   if(db)render().catch(e=>message(e.message));
  }
  if(!botHost||event.origin!==botHost)return;
+ if(nativeWorkspace && msg?.protocol==='personal-workspace-v1'){
+  if(msg.type==='refresh')reload();
+  if(msg.type==='task-removed'&&msg.project===project){go(project,'','','总览');reload()}
+ }
  if(msg?.protocol==='personal-workspace-v1'&&msg.type==='open-target'&&msg.key===JSON.stringify([project,task?.id||'',current?.id||''])){
   const p=project;
   request('/api').then(r=>r.json()).then(data=>{
@@ -58,7 +63,7 @@ function installBotControls(){
   });btn.onmousedown=e=>e.preventDefault();actions.append(btn);
  }
  const confirm=button('确认里程碑',()=>beginMilestone(task,current,selectedQuote()));
- confirm.onmousedown=e=>e.preventDefault();actions.append(confirm);
+ confirm.onmousedown=e=>e.preventDefault();if(!nativeWorkspace)actions.append(confirm);
  $('#content').before(actions);
 }
 if(botHost)installBotControls();
