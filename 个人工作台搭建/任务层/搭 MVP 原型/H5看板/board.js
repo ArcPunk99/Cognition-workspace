@@ -28,6 +28,14 @@ window.addEventListener('message',event=>{
   if(db)render().catch(e=>message(e.message));
  }
  if(!botHost||event.origin!==botHost)return;
+ if(msg?.protocol==='personal-workspace-v1'&&msg.type==='open-target'&&msg.key===JSON.stringify([project,task?.id||'',current?.id||''])){
+  const p=project;
+  request('/api').then(r=>r.json()).then(data=>{
+   if(p!==project)return;
+   const doc=data.docs.find(d=>d.project===p&&d.id===msg.id);if(!doc)return;
+   db=data;go(p,doc.type==='任务'?doc.id:'',doc.id,doc.type==='任务'?'任务':'信息');
+  }).catch(e=>message(e.message));
+ }
  if(msg?.protocol==='personal-workspace-v1'&&msg.type==='binding'&&msg.key===JSON.stringify([project,task?.id||'',current?.id||'']))nativeRoom=msg.room;
 });
 function notifyBot(type,extra={}){
@@ -123,7 +131,8 @@ async function render(){
  if(section==='任务'&&!task&&!linked)task=sections['任务'][0];
  current=linked||task||sections[section][0];
  if(botHost){
-  if(section==='任务视图'||section==='总览')current=null;
+  if(section==='总览')current=readme||projectDoc;
+  if(section==='任务视图')current=null;
   nativeRoom=null;notifyBot('context');$('#botActions').hidden=!current?.id.endsWith('.md');
  }
  const read=d=>go(project,task?.id||'',d.id,section);
