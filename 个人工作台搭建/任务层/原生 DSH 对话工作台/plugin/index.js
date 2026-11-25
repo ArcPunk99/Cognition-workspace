@@ -7,7 +7,7 @@ import { board, documents, read, updateCandidate, originalLines, decide } from '
 import { removeTask, restoreTask, removed, vault } from './tasks.js'
 
 export const name='personal-workspace-native'
-export const inject=['sessionController','systemPrompt','sessionTitle','connection']
+export const inject=['sessionController','systemPrompt','sessionTitle','workspaceRegistry','connection']
 const validId=id=>typeof id==='string' && /^session-[a-f0-9-]{36}$/i.test(id)
 const textOf=content=>(content||[]).filter(block=>block.type==='text').map(block=>block.text).join('\n')
 const userLines=records=>records.map(r=>r.event).filter(e=>e.type==='user/message' && (!e.data.source || e.data.source.kind==='user')).map(e=>({seq:e.seq,who:'User',text:textOf(e.data.content)}))
@@ -120,15 +120,19 @@ export function apply(ctx) {
     },
   }))
   ctx.effect(()=>()=>{for(const dispose of cleanups.splice(0))dispose()})
+  async function projectWorkspace(project) {
+    const dir=path.join(vault,project)
+    return await ctx.workspaceRegistry.resolveByPath(dir) ?? await ctx.workspaceRegistry.create(dir,project)
+  }
   async function handle(a){
     await ready
     if(a.op==='list')return [...sessions.values()].filter(s=>s.documentKey===a.key).map(s=>({id:s.id,title:s.title,at:s.at,cards:s.triggers,sources:s.context.snippets.map(x=>x.id)})).sort((a,b)=>b.at-a.at)
     if(a.op==='create'){
       if(typeof a.title!=='string'||!a.title.trim()||a.title.length>120)throw Error('请输入 1 至 120 字的讨论主题')
       const context=await buildContext(a.key)
-      const dir=path.join(vault,context.project)
+      const workspace=await projectWorkspace(context.project)
       const presets=await ctx.get('agentPresets')?.list()||[]
-      const {sessionId:id}=await ctx.sessionController.create({cwd:dir,...(presets.some(p=>p.id==='standard'&&!p.broken)?{agentPreset:'standard'}:{})})
+      const {sessionId:id}=await ctx.sessionController.create({workspaceId:workspace.id,...(presets.some(p=>p.id==='standard'&&!p.broken)?{agentPreset:'standard'}:{})})
       if(!validId(id))throw Error('DSH 返回的会话编号异常')
       const s={id,documentKey:a.key,title:a.title.trim(),at:Date.now(),context,triggers:[]}
       sessions.set(id,s)
@@ -150,7 +154,12 @@ export function apply(ctx) {
     }
     const s=sessions.get(a.id)
     if(!s||s.documentKey!==a.key)throw Error('请选择当前任务或文档的讨论')
-    if(a.op==='open'){attach((await ctx.sessionController.resolveAgent(s.id)).agent);return {id:s.id}}
+    if(a.op==='open'){
+      const workspace=await projectWorkspace(s.context.project)
+      if(!workspace.sessionIds.includes(s.id))await workspace.attachSession(s.id)
+      attach((await ctx.sessionController.resolveAgent(s.id)).agent)
+      return {id:s.id}
+    }
     if(a.op==='trigger'){
       const instructions={task:'起草行动候选',milestone:'起草认知候选'}
       if(!Object.hasOwn(instructions,a.flow)||typeof a.quote!=='string'||!a.quote.trim()||a.quote.length>8000)throw Error('请选中原文')
