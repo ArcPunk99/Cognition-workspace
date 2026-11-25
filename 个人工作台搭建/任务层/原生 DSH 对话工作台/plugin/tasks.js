@@ -36,9 +36,7 @@ export async function removeTask(project, id) {
   const proj = await projectDir(project)
   const dir = await physical(await physical(proj,'任务层'),name)
   // These tasks hold the running local services.
-  for (const service of ['H5看板/server.mjs','plugin/index.js']) {
-    if (await fs.stat(path.join(dir,service)).then(()=>true,e=>{if(e.code==='ENOENT')return false;throw e})) throw Error('该任务存放工作台程序，运行期间不能移除')
-  }
+  if(project==='个人工作台搭建' && ['搭 MVP 原型','原生 DSH 对话工作台'].includes(name))throw Error('该任务存放当前工作台程序，运行期间不能移除')
   const trash = await physical(proj,trashName,true)
   const token = randomUUID()
   const dest = await physical(trash,token,true)

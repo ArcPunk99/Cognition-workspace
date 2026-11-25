@@ -61,7 +61,7 @@ window.__ModuleLoader__.load({
           await ctx.sessions.refresh?.();await new Promise(resolve=>setTimeout(resolve,100))
         }
         if(version!==epoch)return
-        ctx.uiWorkspace.openSession(id);selected=id;chooser.value=id;signature='';sync();draw()
+        ctx.uiWorkspace.openSession(id);selected=id;chooser.value=id;sessionStorage.setItem('pw-native:'+scope.key,id);signature='';sync();draw()
       }
       const act=async fn=>{if(busy)return;busy=true;sync();try{await fn()}catch(e){msg.textContent=e.message}finally{busy=false;sync()}}
       function draw(){
@@ -112,7 +112,10 @@ window.__ModuleLoader__.load({
           if(scope && scope.key===m.key && scope.project===m.project)return
           const v=++epoch;scope=m;selected='';sessions=[];signature='';toggleForm(false);removal.replaceChildren();recycle.open=false
           del.hidden=!m.task;recycle.hidden=!m.project;msg.textContent=m.title||'项目工作台';sync();draw()
-          try{await refresh();if(epoch===v&&sessions.length)await enter(sessions[0].id,v)}catch(err){msg.textContent=err.message}
+          try{await refresh();if(epoch===v&&sessions.length){
+            const last=sessionStorage.getItem('pw-native:'+m.key)
+            await enter((sessions.find(s=>s.id===last)||sessions[0]).id,v)
+          }}catch(err){msg.textContent=err.message}
         }else if(m.type==='trigger'&&m.key===scope?.key){
           if(!selected||current()!==selected){msg.textContent='请先创建或选择本次讨论';return}
           act(()=>api('trigger',{key:scope.key,id:selected,flow:m.flow,quote:m.quote}))

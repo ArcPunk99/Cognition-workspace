@@ -87,10 +87,10 @@ export function apply(ctx) {
     if(!agent || !sessions.has(agent.id)||attached.has(agent))return
     const definition=defineTool({
       name:'workspace_triggers',description:'Create or update all independent candidate triggers in the current user turn. Reuse a card id when revising it. A normal question requires no tool call. This tool never creates files.',
-      parameters:{cards:{type:'array',required:true,items:{type:'object',properties:{
-        title:{type:'string'},intent:{type:'string'},type:{type:'string',enum:['action','knowledge','undecided']},
-        status:{type:'string',enum:['candidate','clarifying']},context:{type:'string'},id:{type:'string'},
-      },required:['title','intent','type','status']}}},
+      parameters:{cards:{type:'array',required:true,items:{type:'object',additionalProperties:false,properties:{
+        title:{type:'string',required:true},intent:{type:'string',required:true},type:{type:'string',enum:['action','knowledge','undecided'],required:true},
+        status:{type:'string',enum:['candidate','clarifying'],required:true},context:{type:'string'},id:{type:'string'},
+      }}}},
       output:{schema:{type:'string'},render:(_args,value)=>[{type:'text',text:value}]},
       async execute({cards}){
         if(!Array.isArray(cards)||cards.length<1||cards.length>24)throw Error('一次可提交 1 至 24 张独立候选')
@@ -131,10 +131,17 @@ export function apply(ctx) {
       const {sessionId:id}=await ctx.sessionController.create({cwd:dir,...(presets.some(p=>p.id==='standard'&&!p.broken)?{agentPreset:'standard'}:{})})
       if(!validId(id))throw Error('DSH 返回的会话编号异常')
       const s={id,documentKey:a.key,title:a.title.trim(),at:Date.now(),context,triggers:[]}
-      await save(s)
-      const {agent}=await ctx.sessionController.resolveAgent(id)
-      attach(agent)
-      await ctx.sessionTitle.rename(agent.session,s.title)
+      sessions.set(id,s)
+      try {
+        const {agent}=await ctx.sessionController.resolveAgent(id)
+        attach(agent)
+        await ctx.sessionTitle.rename(agent.session,s.title)
+        await save(s)
+      } catch(e) {
+        sessions.delete(id)
+        await ctx.get('workspaceRegistry')?.archiveSession(id,{stopActivity:true}).catch(()=>{})
+        throw e
+      }
       return {id}
     }
     if(['trash','restore','remove'].includes(a.op)){
