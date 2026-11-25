@@ -25,4 +25,4 @@
 
 本轮设计输入：[[个人工作台搭建/信息层/raw/personal_workspace_milestones_handoff_2026-11-24]]。M13 为当前架构倾向，具体选型待定。
 
-资料：[[个人工作台搭建/信息层/raw/原件 663e59bcac9e5005 链接 chatgpt.com.md]]
+资料：[[Project 探索机制、Trigger 卡片与 MVP 技术验证]]
