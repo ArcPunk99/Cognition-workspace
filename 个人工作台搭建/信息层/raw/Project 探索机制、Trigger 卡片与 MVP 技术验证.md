@@ -1,8 +1,16 @@
+---
+类型: 来源材料
+所属项目: "[[个人工作台搭建]]"
+来源URL: https://chatgpt.com/share/6b06cfdb-5e8c-83e8-9869-e713cbda34fd
+获取时间: 2026-11-25
+---
+
 # 外部资料链接
 
 来源：<https://chatgpt.com/share/6b06cfdb-5e8c-83e8-9869-e713cbda34fd>
 
-收录范围：仅登记链接，原文尚未获取。
+收录范围：2026-11-25 登记链接；全文由使用者同日粘贴在本页下方，非 DSH 抓取所得。
+
 # Personal Workspace — Handoff 文档
 
 **主题：Project 探索机制、Trigger 卡片与 MVP 技术验证**
