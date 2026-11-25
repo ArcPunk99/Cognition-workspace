@@ -24,3 +24,5 @@
 [H5 看板源码](H5看板/index.html) · [启动本地服务](H5看板/启动看板.cmd) · [打开运行中的看板](http://127.0.0.1:48732/)
 
 本轮设计输入：[[个人工作台搭建/信息层/raw/personal_workspace_milestones_handoff_2026-11-24]]。M13 为当前架构倾向，具体选型待定。
+
+资料：[[个人工作台搭建/信息层/raw/原件 663e59bcac9e5005 链接 chatgpt.com.md]]
