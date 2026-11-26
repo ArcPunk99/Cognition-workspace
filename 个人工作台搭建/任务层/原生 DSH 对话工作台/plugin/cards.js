@@ -69,7 +69,7 @@ export function taskDraft(room,card) {
 }
 export function taskErrors(draft) {
   const errors={}
-  const name=String(draft.name??'').trim()
+  const name=typeof draft.name==='string'?draft.name.trim():''
   if(!name)errors.name='请填写任务名称'
   else if(name.length>80)errors.name='任务名称最多 80 个字符'
   else if(/[<>:"/\\|?*#\[\]^\x00-\x1f]/.test(name))errors.name='请移除名称中的特殊字符：'+JSON.stringify(name.match(/[<>:"/\\|?*#\[\]^\x00-\x1f]/g).join(' '))
@@ -109,6 +109,7 @@ async function writeObject(rt, room, card, kind, draft) {
 
 export async function decide(rt, room, card, action, draft) {
   if (!['dismiss', 'task', 'milestone'].includes(action)) throw Error('未知操作')
+  if (!active(card) && action==='task' && card.target?.kind!=='task') throw Error('候选状态已变化，请关闭表单并刷新')
   if (!active(card)) { await rt.save({ required: true }); return card }
   if (locked.has(card.id)) throw Error('正在处理这张卡片')
   if (rt.readOnly()) throw Error('当前为只读')
