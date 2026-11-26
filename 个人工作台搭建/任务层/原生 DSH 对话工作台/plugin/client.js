@@ -114,6 +114,12 @@ window.__ModuleLoader__.load({
         const expanded=new Set([...cards.querySelectorAll('details[open]')].map(d=>d.dataset.key))
         cards.replaceChildren()
         if(!active)return
+        const pending=active.cards.filter(c=>['candidate','clarifying'].includes(c.status)).length
+        const line=el('div');line.className='pn-bar'
+        line.append(el('strong','待确认候选 · '+pending),button('重新识别本轮候选',()=>act(async()=>{
+          await api('retry-candidates',{id:active.id,key:scope.key})
+          msg.textContent='已请求重新识别，候选会显示在当前讨论上方'
+        })));cards.append(line)
         const block=(key,title)=>{const d=el('details');d.dataset.key=key;d.open=expanded.has(key);d.append(el('summary',title));cards.append(d);return d}
         block('sources','已注入 '+active.sources.length+' 份上下文').append(el('pre',active.sources.join('\n')))
         for(const c of active.cards.slice().reverse()){
