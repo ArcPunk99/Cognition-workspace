@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import { board, documents, read, updateCandidate, originalLines, decide } from './cards.js'
+import { board, documents, read, updateCandidate, originalLines, decide,taskDraft,taskErrors } from './cards.js'
 import { removeTask, restoreTask, removed, vault } from './tasks.js'
 
 export const name='personal-workspace-native'
@@ -168,6 +168,10 @@ export function apply(ctx) {
     }
     const card=s.triggers.find(c=>c.id===a.card)
     if(!card)throw Error('该会话中没有此卡片')
+    if(a.op==='task-draft'){
+      const draft=taskDraft(s,card)
+      return {draft,errors:taskErrors(draft)}
+    }
     if(a.op==='sources')return originalLines(runtime(s),s,card)
     if(a.op==='decide')return mutate(s.id,async copy=>{
       const selected=copy.triggers.find(c=>c.id===a.card)
@@ -176,11 +180,11 @@ export function apply(ctx) {
         selected.status='candidate'
         return selected
       }
-      return decide(runtime(copy),copy,selected,a.action)
+      return decide(runtime(copy),copy,selected,a.action,a.action==='task'?a.draft:undefined)
     })
     throw Error('未知操作')
   }
   ctx.effect(()=>ctx.connection.fetch.register({path:'/api/personal-workspace',methods:['POST'],requestBody:'buffered',
-    fetch:async req=>{try{return Response.json({ok:true,value:await handle(await req.json())})}catch(e){return Response.json({ok:false,error:e.message})}}}))
+    fetch:async req=>{try{return Response.json({ok:true,value:await handle(await req.json())})}catch(e){return Response.json({ok:false,error:e.message,errors:e.errors})}}}))
 }
 

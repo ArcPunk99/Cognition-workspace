@@ -64,33 +64,57 @@ export async function originalLines(rt, room, card) {
   }))
 }
 
-async function writeObject(rt, room, card, kind) {
+export function taskDraft(room,card) {
+  return {name:card.title,intent:card.intent,goal:card.intent,context:card.context || '来自 '+fields(room).source,status:'待推进'}
+}
+export function taskErrors(draft) {
+  const errors={}
+  const name=String(draft.name??'').trim()
+  if(!name)errors.name='请填写任务名称'
+  else if(name.length>80)errors.name='任务名称最多 80 个字符'
+  else if(/[<>:"/\\|?*#\[\]^\x00-\x1f]/.test(name))errors.name='请移除名称中的特殊字符：'+JSON.stringify(name.match(/[<>:"/\\|?*#\[\]^\x00-\x1f]/g).join(' '))
+  else if(name.startsWith('.')||name.endsWith('.')||/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name))errors.name='请换一个可用作目录名的名称，开头和结尾不能是英文句点'
+  for(const [key,label] of [['intent','任务目的'],['goal','预期成果'],['context','来源与上下文']])if(typeof draft[key]!=='string'||!draft[key].trim())errors[key]='请填写'+label
+  if(!['待推进','进行中','已完成'].includes(draft.status))errors.status='请选择任务状态'
+  return errors
+}
+async function writeObject(rt, room, card, kind, draft) {
   const { project, owner, source } = fields(room)
   const marker = '<!-- workspace-trigger:' + card.id + ' -->'
   const docs = await documents(project)
-  const taskPath = project + '/任务层/' + card.title + '/' + card.title + '.md'
+  if(kind==='task'){
+    draft ??= taskDraft(room,card)
+    const errors=taskErrors(draft)
+    if(Object.keys(errors).length)throw Object.assign(Error('请修改标出的字段'),{errors})
+  }
+  const name=kind==='task'?draft.name.trim():''
+  const taskPath = project + '/任务层/' + name + '/' + name + '.md'
   const title = card.intent.split('\n')[0].replace(/[<>:"/\\|?*#\[\]^\x00-\x1f]/g, ' ').slice(0, 48).trim() || '已确认判断'
   const possible = docs.filter(doc => kind === 'task' ? doc.id === taskPath : doc.id.startsWith(project + '/信息层/认知里程碑/判断 ' + title + ' '))
   for (const doc of possible) if ((await read(doc.id)).includes(marker)) return { kind, id: doc.id }
   const lines = await originalLines(rt, room, card)
   const ref = 'DSH ' + room.id + ' · ' + lines.map(line => '#' + line.seq).join('、')
-  const notes = [card.context, '[[' + source.replace(/\.md$/, '') + ']]', ref, marker].filter(Boolean).join('\n')
+  const notes = [draft?.context ?? card.context, '[[' + source.replace(/\.md$/, '') + ']]', ref, marker].filter(Boolean).join('\n')
   const data = kind === 'task'
-    ? { project, source, name: card.title, intent: card.intent, goal: card.intent, context: notes, status: '待推进' }
+    ? { project, source, name, intent:draft.intent.trim(), goal:draft.goal.trim(), context:notes, status:draft.status }
     : { project, source, owner, text: [card.intent, ref, marker].join('\n\n'), fromMessage: true,
         quote: lines.at(-1).text.slice(0, 4000), conversation: { id: room.id.replace(/^session-/, ''), topic: card.title, time: new Date().toISOString() } }
-  const result = await (await request('/' + kind, data)).json()
+  let result
+  try{result=await (await request('/' + kind, data)).json()}catch(e){
+    if(kind==='task'&&e.message.includes('同名任务'))e.errors={name:'已有同名任务，请换一个名称'}
+    throw e
+  }
   return { kind, id: result.id }
 }
 
-export async function decide(rt, room, card, action, write = writeObject) {
+export async function decide(rt, room, card, action, draft) {
   if (!['dismiss', 'task', 'milestone'].includes(action)) throw Error('未知操作')
   if (!active(card)) { await rt.save({ required: true }); return card }
   if (locked.has(card.id)) throw Error('正在处理这张卡片')
   if (rt.readOnly()) throw Error('当前为只读')
   locked.add(card.id)
   try {
-    if (action !== 'dismiss') card.target = await write(rt, room, card, action)
+    if (action !== 'dismiss') card.target = await writeObject(rt, room, card, action,draft)
     card.status = action === 'dismiss' ? 'dismissed' : 'accepted'
     await rt.save({ required: true })
     return card

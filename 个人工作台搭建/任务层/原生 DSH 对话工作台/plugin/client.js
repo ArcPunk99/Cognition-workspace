@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
       const res=await fetch('api/personal-workspace',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({op,...data})})
       if(!res.ok)throw Error('DSH 服务不可用 · '+res.status)
       const json=await res.json()
-      if(!json.ok)throw Error(json.error)
+      if(!json.ok)throw Object.assign(Error(json.error),{errors:json.errors})
       return json.value
     }
     const opener=button('项目工作台',()=>open())
@@ -28,6 +28,7 @@ window.__ModuleLoader__.load({
       .pn-wait{inset:calc(var(--pn-h,48px) + var(--dsh-windows-titlebar-height,0px)) 0 0 56%;display:grid;place-items:center;text-align:center}.pn-wait[hidden]{display:none}
       body:has(.pn-left) [class*="_centerCol"]{position:fixed!important;inset:calc(var(--pn-h,48px) + var(--dsh-windows-titlebar-height,0px)) 0 0 56%!important;width:44%!important;margin:0!important;min-width:0!important}
       body:has(.pn-left) .pn-launch{display:none}.pn-ui pre{white-space:pre-wrap}
+      .pn-task{width:min(460px,90vw);max-height:82vh;border:1px solid #bac8bd;border-radius:12px;padding:20px}.pn-task::backdrop{background:#162b2259}.pn-task form,.pn-task label{display:grid;gap:5px}.pn-task form{gap:12px}.pn-task textarea{font:inherit;resize:vertical;padding:6px}.pn-task small,.pn-task [role=alert]{color:#993c24}.pn-task [aria-invalid=true]{outline:2px solid #a54632}.pn-task h2{margin:0 0 4px}
     `;document.head.append(style);document.body.append(opener)
     let shutdown
     function open(){
@@ -64,6 +65,45 @@ window.__ModuleLoader__.load({
         ctx.uiWorkspace.openSession(id);selected=id;chooser.value=id;sessionStorage.setItem('pw-native:'+scope.key,id);signature='';sync();draw()
       }
       const act=async fn=>{if(busy)return;busy=true;sync();try{await fn()}catch(e){msg.textContent=e.message}finally{busy=false;sync()}}
+      async function editTask(ref){
+        const {draft,errors}=await api('task-draft',ref)
+        if(scope?.key!==ref.key||selected!==ref.id)return
+        const dialog=el('dialog');dialog.className='pn-ui pn-task';dialog.setAttribute('aria-label','从候选创建任务')
+        const fields=el('form');fields.noValidate=true
+        fields.append(el('h2','创建任务'),el('span','所属项目：'+scope.project+' · 以下字段均为必填'))
+        const controls={},hints={}
+        function showErrors(map){
+          for(const key of Object.keys(controls)){hints[key].textContent=map[key]||'';controls[key].setAttribute('aria-invalid',String(Boolean(map[key])))}
+          controls[Object.keys(map)[0]]?.focus()
+        }
+        for(const [key,title] of [['name','任务名称'],['intent','任务目的'],['goal','预期成果'],['context','来源与上下文'],['status','状态']]){
+          const label=el('label',title)
+          const input=el(key==='status'?'select':key==='name'?'input':'textarea')
+          if(key==='status')for(const value of ['待推进','进行中','已完成'])input.add(new Option(value,value))
+          if(key==='name')input.maxLength=80
+          input.name=key;input.required=true;input.value=draft[key];input.setAttribute('aria-label',title)
+          const hint=el('small');hint.id='pn-error-'+key;input.setAttribute('aria-describedby',hint.id)
+          input.oninput=()=>{hint.textContent='';input.removeAttribute('aria-invalid')}
+          controls[key]=input;hints[key]=hint;label.append(input,hint);fields.append(label)
+        }
+        const notice=el('span');notice.setAttribute('role','alert')
+        const submit=el('button','确认创建'),cancel=button('取消',()=>dialog.close());cancel.type='button'
+        const buttons=el('div');buttons.className='pn-bar';buttons.append(submit,cancel)
+        fields.append(notice,buttons);dialog.append(fields);document.body.append(dialog)
+        dialog.onclose=()=>dialog.remove();dialog.oncancel=e=>{if(submit.disabled)e.preventDefault()}
+        dialog.showModal();showErrors(errors)
+        fields.onsubmit=async e=>{
+          e.preventDefault();if(submit.disabled)return
+          const values=Object.fromEntries(new FormData(fields))
+          submit.disabled=true;cancel.disabled=true;notice.textContent=''
+          try{
+            await api('decide',{...ref,action:'task',draft:values})
+            dialog.close();msg.textContent='已创建任务：'+values.name.trim();await refresh()
+            frame.contentWindow.postMessage({protocol,type:'refresh'},board)
+          }catch(err){showErrors(err.errors||{});notice.textContent=err.message}
+          finally{submit.disabled=false;cancel.disabled=false}
+        }
+      }
       function draw(){
         const active=sessions.find(s=>s.id===selected)
         const state=JSON.stringify([selected,sessions.map(s=>[s.id,s.title]),active?.cards])
@@ -83,7 +123,7 @@ window.__ModuleLoader__.load({
           const evidence=el('pre')
           d.append(button('看原话',()=>act(async()=>{const rows=await api('sources',ref);evidence.textContent=rows.map(r=>'#'+r.seq+' '+r.text).join('\n')})),evidence)
           const actions=c.status==='dismissed'?[['恢复候选','undo-dismiss']]:c.status==='accepted'?[]:[['创建任务','task'],['确认里程碑','milestone'],['取消候选','dismiss']]
-          for(const [label,action] of actions)d.append(button(label,()=>act(async()=>{await api('decide',{...ref,action});await refresh();frame.contentWindow.postMessage({protocol,type:'refresh'},board)})))
+          for(const [label,action] of actions)d.append(button(label,()=>act(async()=>{if(action==='task')return editTask(ref);await api('decide',{...ref,action});await refresh();frame.contentWindow.postMessage({protocol,type:'refresh'},board)})))
           if(c.target)d.append(button('打开成果',()=>frame.contentWindow.postMessage({protocol,type:'open-target',key:scope.key,id:c.target.id},board)))
         }
       }
