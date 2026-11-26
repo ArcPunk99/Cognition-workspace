@@ -38,13 +38,14 @@ function clean(value, limit) {
 
 export function updateCandidate(room, args) {
   const { type, status } = args
-  if (!['action', 'knowledge', 'undecided'].includes(type) || !['candidate', 'clarifying'].includes(status)) throw Error('候选类型或状态无效')
+  if (!['action', 'knowledge', 'undecided','completion','subtask'].includes(type) || !['candidate', 'clarifying'].includes(status)) throw Error('候选类型或状态无效')
+  if (['completion','subtask'].includes(type) && !room.context?.task) throw Error('请在任务讨论中提出此候选')
   const title = clean(args.title, 80), intent = clean(args.intent, 1400)
   const context = args.context ? clean(args.context, 1400) : null
   const evidence = room.log?.find(line => line.seq === args.message && line.who === 'User' && !line.botId && !line.kind)
   if (!evidence) throw Error('请引用当前讨论里真实用户消息的编号')
   const cards = room.triggers ??= []
-  let card = args.id ? cards.find(item => item.id === args.id) : cards.find(item => active(item) && item.title === title)
+  let card = args.id ? cards.find(item => item.id === args.id) : cards.find(item => active(item) && item.type===type && (type==='completion' || item.title === title))
   if (args.id && !card) throw Error('当前讨论没有此候选')
   if (card && (!active(card) || locked.has(card.id))) throw Error('这张卡片已处置或正在写入')
   if (!card) {
@@ -96,8 +97,8 @@ async function writeObject(rt, room, card, kind, draft) {
   const ref = 'DSH ' + room.id + ' · ' + lines.map(line => '#' + line.seq).join('、')
   const notes = [draft?.context ?? card.context, '[[' + source.replace(/\.md$/, '') + ']]', ref, marker].filter(Boolean).join('\n')
   const data = kind === 'task'
-    ? { project, source, name, intent:draft.intent.trim(), goal:draft.goal.trim(), context:notes, status:draft.status }
-    : { project, source, owner, text: [card.intent, ref, marker].join('\n\n'), fromMessage: true,
+    ? { project, source, name, ...(card.type==='subtask'?{parentTask:room.context.task}:{}), intent:draft.intent.trim(), goal:draft.goal.trim(), context:notes, status:draft.status }
+    : { project, source, owner:owner || room.context?.task, text: [card.intent, ref, marker].join('\n\n'), fromMessage: true,
         quote: lines.at(-1).text.slice(0, 4000), conversation: { id: room.id.replace(/^session-/, ''), topic: card.title, time: new Date().toISOString() } }
   let result
   try{result=await (await request('/' + kind, data)).json()}catch(e){
@@ -108,14 +109,24 @@ async function writeObject(rt, room, card, kind, draft) {
 }
 
 export async function decide(rt, room, card, action, draft) {
-  if (!['dismiss', 'task', 'milestone'].includes(action)) throw Error('未知操作')
+  const allowed={completion:['complete','dismiss'],subtask:['task','dismiss'],knowledge:['milestone','dismiss'],action:['task','dismiss'],undecided:['task','milestone','dismiss']}
+  if (!allowed[card.type]?.includes(action)) throw Error('未知操作')
   if (!active(card) && action==='task' && card.target?.kind!=='task') throw Error('候选状态已变化，请关闭表单并刷新')
   if (!active(card)) { await rt.save({ required: true }); return card }
   if (locked.has(card.id)) throw Error('正在处理这张卡片')
   if (rt.readOnly()) throw Error('当前为只读')
   locked.add(card.id)
   try {
-    if (action !== 'dismiss') card.target = await writeObject(rt, room, card, action,draft)
+    if (action === 'complete') {
+      const task=room.context.task
+      if (!(await documents(fields(room).project)).some(d=>d.id===task && d.type==='任务')) throw Error('找不到当前任务，请刷新')
+      const original=await read(task)
+      const header=original.match(/^---\r?\n[\s\S]*?\r?\n---(?=\r?\n|$)/)
+      if (!header || !/^状态:[^\r\n]*/m.test(header[0])) throw Error('任务缺少状态字段，请检查任务说明')
+      const text=header[0].replace(/^状态:[^\r\n]*/m,'状态: 已完成')+original.slice(header[0].length)
+      if (text!==original) await request('/save',{source:task,original,text})
+      card.target={kind:'completion',id:task}
+    } else if (action !== 'dismiss') card.target = await writeObject(rt, room, card, action,draft)
     card.status = action === 'dismiss' ? 'dismissed' : 'accepted'
     await rt.save({ required: true })
     return card

@@ -65,12 +65,13 @@ window.__ModuleLoader__.load({
         ctx.uiWorkspace.openSession(id);selected=id;chooser.value=id;sessionStorage.setItem('pw-native:'+scope.key,id);signature='';sync();draw()
       }
       const act=async fn=>{if(busy)return;busy=true;sync();try{await fn()}catch(e){msg.textContent=e.message}finally{busy=false;sync()}}
-      async function editTask(ref){
+      async function editTask(ref,child=false){
         const {draft,errors}=await api('task-draft',ref)
         if(scope?.key!==ref.key||selected!==ref.id)return
         const dialog=el('dialog');dialog.className='pn-ui pn-task';dialog.setAttribute('aria-label','从候选创建任务')
         const fields=el('form');fields.noValidate=true
-        fields.append(el('h2','创建任务'),el('span','所属项目：'+scope.project+' · 以下字段均为必填'))
+        fields.append(el('h2',child?'创建子任务':'创建任务'),el('span','所属项目：'+scope.project+' · 以下字段均为必填'))
+        if(child)fields.append(el('span','父任务：'+(scope.task||scope.source||'').split('/').at(-2)))
         const controls={},hints={}
         function showErrors(map){
           for(const key of Object.keys(controls)){hints[key].textContent=map[key]||'';controls[key].setAttribute('aria-invalid',String(Boolean(map[key])))}
@@ -117,13 +118,13 @@ window.__ModuleLoader__.load({
         block('sources','已注入 '+active.sources.length+' 份上下文').append(el('pre',active.sources.join('\n')))
         for(const c of active.cards.slice().reverse()){
           const labels={candidate:'候选',clarifying:'澄清中',accepted:'已转化',dismissed:'已取消'}
-          const d=block(c.id,labels[c.status]+' · '+c.title)
+          const d=block(c.id,[(c.type==='completion'&&c.status==='dismissed'?'已选择继续聊':labels[c.status]),({completion:'结束任务建议',subtask:'子任务建议',knowledge:'认知里程碑'})[c.type],c.title].filter(Boolean).join(' · '))
           d.append(el('p',c.intent));if(c.context)d.append(el('p',c.context))
           const ref={id:active.id,key:scope.key,card:c.id}
           const evidence=el('pre')
           d.append(button('看原话',()=>act(async()=>{const rows=await api('sources',ref);evidence.textContent=rows.map(r=>'#'+r.seq+' '+r.text).join('\n')})),evidence)
-          const actions=c.status==='dismissed'?[['恢复候选','undo-dismiss']]:c.status==='accepted'?[]:[['创建任务','task'],['确认里程碑','milestone'],['取消候选','dismiss']]
-          for(const [label,action] of actions)d.append(button(label,()=>act(async()=>{if(action==='task')return editTask(ref);await api('decide',{...ref,action});await refresh();frame.contentWindow.postMessage({protocol,type:'refresh'},board)})))
+          const actions=c.status==='dismissed'?[['恢复候选','undo-dismiss']]:c.status==='accepted'?[]:({completion:[['确认结束任务','complete'],['继续聊','dismiss']],subtask:[['创建子任务','task'],['暂不创建','dismiss']],knowledge:[['确认里程碑','milestone'],['取消候选','dismiss']],action:[['创建任务','task'],['取消候选','dismiss']]}[c.type] || [['创建任务','task'],['确认里程碑','milestone'],['取消候选','dismiss']])
+          for(const [label,action] of actions)d.append(button(label,()=>act(async()=>{if(action==='task')return editTask(ref,c.type==='subtask');await api('decide',{...ref,action});await refresh();frame.contentWindow.postMessage({protocol,type:'refresh'},board)})))
           if(c.target)d.append(button('打开成果',()=>frame.contentWindow.postMessage({protocol,type:'open-target',key:scope.key,id:c.target.id},board)))
         }
       }

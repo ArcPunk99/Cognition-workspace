@@ -17,7 +17,7 @@ catch {
   if (!$ready) { throw '项目看板服务启动失败。' }
 }
 $profileRoot=Join-Path $(if($env:DSH_HOME){$env:DSH_HOME}else{Join-Path $env:USERPROFILE '.dsh'}) 'profiles/personal-workspace'
-$package=Join-Path $PSScriptRoot 'personal-workspace-native-0.1.2.tgz'
+$package=Join-Path $PSScriptRoot 'personal-workspace-native-0.1.3.tgz'
 if (!(Test-Path -LiteralPath "$profileRoot/package.json")) {
   New-Item -Type Directory -Force $profileRoot | Out-Null
   '{"name":"personal-workspace-profile","private":true,"dsh":{"profile":{"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","personal-workspace-native"]}}}' | Set-Content -Encoding ascii "$profileRoot/package.json"
